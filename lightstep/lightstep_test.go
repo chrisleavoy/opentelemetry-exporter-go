@@ -8,8 +8,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/api/kv"
-	apitrace "go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/api/core"
+	"go.opentelemetry.io/otel/api/key"
+
 	"go.opentelemetry.io/otel/sdk/export/trace"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -18,8 +19,8 @@ func TestExport(t *testing.T) {
 	assert := assert.New(t)
 	now := time.Now().Round(time.Microsecond)
 
-	traceID, _ := apitrace.IDFromHex("0102030405060708090a0b0c0d0e0f10")
-	spanID, _ := apitrace.SpanIDFromHex("0102030405060708")
+	traceID, _ := core.TraceIDFromHex("0102030405060708090a0b0c0d0e0f10")
+	spanID, _ := core.SpanIDFromHex("0102030405060708")
 
 	expectedTraceID := uint64(0x90a0b0c0d0e0f10)
 	expectedSpanID := uint64(0x102030405060708)
@@ -32,7 +33,7 @@ func TestExport(t *testing.T) {
 		{
 			name: "root span",
 			data: &trace.SpanData{
-				SpanContext: apitrace.SpanContext{
+				SpanContext: core.SpanContext{
 					TraceID: traceID,
 					SpanID:  spanID,
 				},
@@ -40,11 +41,11 @@ func TestExport(t *testing.T) {
 				StartTime: now,
 				EndTime:   now,
 				Resource: resource.New(
-					kv.String("R1", "V1"),
+					key.String("R1", "V1"),
 				),
-				Attributes: []kv.KeyValue{
-					kv.String("A", "B"),
-					kv.String("C", "D"),
+				Attributes: []core.KeyValue{
+					key.String("A", "B"),
+					key.String("C", "D"),
 				},
 			},
 			want: &ls.RawSpan{
@@ -65,7 +66,7 @@ func TestExport(t *testing.T) {
 		{
 			name: "with events",
 			data: &trace.SpanData{
-				SpanContext: apitrace.SpanContext{
+				SpanContext: core.SpanContext{
 					TraceID: traceID,
 					SpanID:  spanID,
 				},
@@ -75,14 +76,14 @@ func TestExport(t *testing.T) {
 				MessageEvents: []trace.Event{
 					trace.Event{
 						Name: "myevent",
-						Attributes: []kv.KeyValue{
-							kv.String("A", "B"),
+						Attributes: []core.KeyValue{
+							key.String("A", "B"),
 						},
 						Time: now,
 					},
 				},
 				Resource: resource.New(
-					kv.String("R1", "V1"),
+					key.String("R1", "V1"),
 				),
 			},
 			want: &ls.RawSpan{

@@ -6,11 +6,13 @@ import (
 	"errors"
 	"time"
 
+	"go.opentelemetry.io/otel/api/key"
 	"go.opentelemetry.io/otel/sdk/resource"
+
+	"go.opentelemetry.io/otel/api/core"
 
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"go.opentelemetry.io/otel/api/kv"
 	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/sdk/export/trace"
 )
@@ -42,8 +44,8 @@ func oTelSpanKind(kind tracepb.Span_SpanKind) apitrace.SpanKind {
 // Creates an OpenTelemetry SpanContext from information in an OC Span.
 // Note that the OC Span has no equivalent to TraceFlags field in the
 // OpenTelemetry SpanContext type.
-func spanContext(traceID []byte, spanID []byte) apitrace.SpanContext {
-	ctx := apitrace.SpanContext{}
+func spanContext(traceID []byte, spanID []byte) core.SpanContext {
+	ctx := core.SpanContext{}
 	if traceID != nil {
 		copy(ctx.TraceID[:], traceID[:])
 	}
@@ -54,26 +56,26 @@ func spanContext(traceID []byte, spanID []byte) apitrace.SpanContext {
 }
 
 // Create []kv.KeyValue attributes from an OC *Span_Attributes
-func createOTelAttributes(attributes *tracepb.Span_Attributes) []kv.KeyValue {
+func createOTelAttributes(attributes *tracepb.Span_Attributes) []core.KeyValue {
 	if attributes == nil || attributes.AttributeMap == nil {
 		return nil
 	}
 
-	oTelAttrs := make([]kv.KeyValue, len(attributes.AttributeMap))
+	oTelAttrs := make([]core.KeyValue, len(attributes.AttributeMap))
 
 	i := 0
-	for key, attributeValue := range attributes.AttributeMap {
-		var keyValue kv.KeyValue
-		key := kv.Key(key)
+	for k, attributeValue := range attributes.AttributeMap {
+		var keyValue core.KeyValue
+		k := core.Key(k)
 		switch value := attributeValue.Value.(type) {
 		case *tracepb.AttributeValue_StringValue:
-			keyValue = key.String(attributeValueAsString(attributeValue))
+			keyValue = k.String(attributeValueAsString(attributeValue))
 		case *tracepb.AttributeValue_BoolValue:
-			keyValue = key.Bool(value.BoolValue)
+			keyValue = k.Bool(value.BoolValue)
 		case *tracepb.AttributeValue_IntValue:
-			keyValue = key.Int64(value.IntValue)
+			keyValue = k.Int64(value.IntValue)
 		case *tracepb.AttributeValue_DoubleValue:
-			keyValue = key.Float64(value.DoubleValue)
+			keyValue = k.Float64(value.DoubleValue)
 		}
 		oTelAttrs[i] = keyValue
 		i++
@@ -169,10 +171,10 @@ func spanResource(span *tracepb.Span) *resource.Resource {
 	if span.Resource == nil {
 		return nil
 	}
-	attrs := make([]kv.KeyValue, len(span.Resource.Labels))
+	attrs := make([]core.KeyValue, len(span.Resource.Labels))
 	i := 0
 	for k, v := range span.Resource.Labels {
-		attrs[i] = kv.String(k, v)
+		attrs[i] = key.String(k, v)
 		i++
 	}
 	return resource.New(attrs...)
